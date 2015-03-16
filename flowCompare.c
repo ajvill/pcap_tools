@@ -8,27 +8,32 @@ typedef struct flow_table__t {
     unsigned int tip;
     unsigned short sport;
     unsigned short tport;
-    unsigned int found;
+    //unsigned int found;
     //size_t   length; 
 } flow_table_t;
 
+struct node {
+    flow_table_t    *flowTable;
+    struct node     *next, *prev;
+} List;
+
 int main(int argc, char *argv[])
 {
-  flow_table_t *flowTable = NULL;
+  struct node  *root, *head, *tail, *temp;
   unsigned int flowTableCount = 0;
   unsigned int foundFlows = 0;
-  unsigned int flowTableSize = 10000000;
+  //unsigned int flowTableSize = 10000000;
 
   if ( argc < 3 ) {
     printf("%s: (file)\n", argv[0]);
     exit(1);
   }
 
-  flowTable = (flow_table_t*) malloc(flowTableSize * sizeof(flow_table_t));
-  if ( flowTable == NULL ) {
-      perror("FlowTable is null\n");
-      exit(1);
-  }
+  root = malloc(sizeof(List));
+  root->flowTable = malloc(sizeof(flow_table_t));
+  head = root;
+  tail = root;
+  temp = root;
 
   struct pcap_pkthdr *h = malloc (sizeof(struct pcap_pkthdr));
   if ( !h ) {
@@ -66,22 +71,29 @@ int main(int argc, char *argv[])
         sportv_p[0] = sport[1]; sportv_p[1] = sport[0];
         tportv_p[0] = tport[1]; tportv_p[1] = tport[0];
 
-         if ( flowTable ) {
-              flowTable[flowTableCount].sip = sipv; 
-			  flowTable[flowTableCount].tip =  tipv;
-              flowTable[flowTableCount].sport = sportv; 
-			  flowTable[flowTableCount].tport = tportv;
-              flowTable[flowTableCount].found = 0;
-              flowTableCount++;
+         if (root) {
+             // Fill table here
+             head->next =  malloc( sizeof(List) );
+             head = head->next;
+             head->prev = tail;
+             tail = head;
+             head->flowTable = malloc(sizeof(flow_table_t));
+             head->flowTable->sip = sipv; 
+			 head->flowTable->tip =  tipv;
+             head->flowTable->sport = sportv; 
+			 head->flowTable->tport = tportv;
+             flowTableCount++;
          } else {
               printf("MALLOC ERROR !!!\n");
               exit(1);
          }
     }
+    tail = root;
     pc++;
   }
   pcap_close(p);  //Releasing resources closing sessions pcap handler
 
+  // Open Keepalive pcap
   pcap_t *p_keepAlive = pcap_open_offline(argv[2], ERRBUF);  //Create handler to keepalive handler
   if ( !p_keepAlive ) {
     perror("KeepAlive pcap_open_offline:");
@@ -116,32 +128,35 @@ int main(int argc, char *argv[])
 		tip_i = tipv;
 		sport_i = sportv;
 		tport_i = tportv;
-	
-        
-		//Look for 4-tuple flow to complete match
-	    unsigned int loop;
-		for (loop  = 0; loop < flowTableCount; loop++) {
-            if ( flowTable[loop].found == 0   &&
-                 flowTable[loop].sip == sip_i &&
-                 flowTable[loop].tip == tip_i )
-                // flowTable[loop].sport == sport_i &&
-                 //flowTable[loop].tport == tport_i ) {
 
-                    flowTable[loop].found = 1;
-                    foundFlows++;
-                }
-         }
-         
+        head = root;
+        tail = root;
+        temp = root;
+        
+        while( head ) {
+            if ( head->flowTable->sip == sip_i &&
+                 head->flowTable->tip == tip_i &&
+                 head->flowTable->sport == sport_i &&
+                 head->flowTable->tport == tport_i ) {
+
+                //printf("sip = %i\n", head->flowTable->sip);
+                //head->flowTable->found = 1;
+                tail = head->prev;
+                temp = head->next;
+                temp->prev = tail;
+                tail->next = temp;
+                free(head);
+                foundFlows++;
+                break;
+            } else { head = head->next; }
+        }
     } //end of IF
-  }  //end of While   
+  }  //end of While
+
   pcap_close(p_keepAlive);
-  free(flowTable);
   free(h);
 
   printf("The flowtable contains %i flows\n", flowTableCount);
   printf("I found %i flows\n", foundFlows);
   return 0;
 }
-
-
-
