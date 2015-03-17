@@ -123,9 +123,9 @@ int main(int argc, char *argv[])
 		for (loop  = 0; loop < flowTableCount; loop++) {
             if ( flowTable[loop].found == 0   &&
                  flowTable[loop].sip == sip_i &&
-                 flowTable[loop].tip == tip_i )
-                // flowTable[loop].sport == sport_i &&
-                 //flowTable[loop].tport == tport_i ) {
+                 flowTable[loop].tip == tip_i &&
+                 flowTable[loop].sport == sport_i &&
+                 flowTable[loop].tport == tport_i ) {
 
                     flowTable[loop].found = 1;
                     foundFlows++;
